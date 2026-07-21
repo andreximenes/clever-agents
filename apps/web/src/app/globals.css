@@ -57,3 +57,41 @@ body {
 ::placeholder {
   color: var(--color-muted);
 }
+
+/*
+ * Markdown editor. It themes itself through Primer-style variables; mapping
+ * them to ours keeps the writing area visible (on light it was white on white).
+ */
+.md-editor-wrap {
+  --color-canvas-default: var(--color-surface-2);
+  --color-canvas-subtle: var(--color-surface);
+  --color-border-default: var(--color-border);
+  --color-border-muted: var(--color-border);
+  --color-fg-default: var(--color-text);
+  --color-fg-muted: var(--color-muted);
+  --color-accent-fg: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+
+.md-editor-wrap .w-md-editor {
+  background-color: var(--color-surface-2);
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+.md-editor-wrap .w-md-editor-toolbar {
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.md-editor-wrap .w-md-editor-text-input,
+.md-editor-wrap .w-md-editor-text-pre > code,
+.md-editor-wrap .w-md-editor-text-pre {
+  color: var(--color-text) !important;
+  -webkit-text-fill-color: var(--color-text);
+}
+
+.md-editor-wrap .w-md-editor-preview {
+  background-color: var(--color-surface);
+  box-shadow: inset 1px 0 0 0 var(--color-border);
+}

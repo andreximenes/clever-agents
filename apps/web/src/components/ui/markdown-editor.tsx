@@ -40,7 +40,7 @@ export function MarkdownEditor({ value, onChange, height = 320 }: Props) {
   return (
     <div
       data-color-mode={theme}
-      className="rounded-[var(--radius)] overflow-hidden"
+      className="md-editor-wrap overflow-hidden rounded-[var(--radius)]"
     >
       <MDEditor
         value={value}
