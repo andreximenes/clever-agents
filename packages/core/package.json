@@ -1,0 +1,46 @@
+{
+  "name": "@clever/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./db": "./src/db/index.ts",
+    "./db/schema": "./src/db/schema.ts",
+    "./crypto": "./src/crypto.ts",
+    "./env": "./src/env.ts",
+    "./ai": "./src/ai/index.ts",
+    "./documents": "./src/documents/index.ts",
+    "./evolution": "./src/evolution/index.ts",
+    "./messaging": "./src/messaging/index.ts",
+    "./agent": "./src/agent/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.16",
+    "@ai-sdk/google": "^4.0.19",
+    "@ai-sdk/openai": "^4.0.16",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "ai": "^7.0.32",
+    "drizzle-orm": "^0.38.3",
+    "mammoth": "^1.12.0",
+    "postgres": "^3.4.5",
+    "unpdf": "^1.6.2",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.30.1",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  }
+}

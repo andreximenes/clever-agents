@@ -1,0 +1,72 @@
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: unless-stopped
+    environment:
+      # Docker Engine 29+ rejects the old API version Traefik negotiates by
+      # default ("client version 1.24 is too old").
+      - DOCKER_API_VERSION=1.44
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    image: clever-agents:latest
+    restart: unless-stopped
+    working_dir: /repo
+    command: pnpm --filter @clever/web start
+    env_file: .env
+    expose:
+      - "3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.web.entrypoints=websecure
+      - traefik.http.routers.web.tls.certresolver=le
+      - traefik.http.services.web.loadbalancer.server.port=3000
+    depends_on:
+      - traefik
+
+  worker:
+    image: clever-agents:latest
+    restart: unless-stopped
+    working_dir: /repo
+    command: pnpm --filter @clever/worker start
+    env_file: .env
+    expose:
+      - "3001"
+    labels:
+      - traefik.enable=true
+      # Evolution posts to /webhook/... — route that to the worker, not the panel.
+      - traefik.http.routers.worker.rule=Host(`${DOMAIN}`) && (PathPrefix(`/webhook`) || Path(`/health`))
+      - traefik.http.routers.worker.priority=100
+      - traefik.http.routers.worker.entrypoints=websecure
+      - traefik.http.routers.worker.tls.certresolver=le
+      - traefik.http.services.worker.loadbalancer.server.port=3001
+    depends_on:
+      - web
+
+volumes:
+  letsencrypt:
