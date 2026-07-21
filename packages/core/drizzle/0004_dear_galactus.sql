@@ -1,0 +1,1 @@
+ALTER TABLE "agents" ALTER COLUMN "debounce_seconds" SET DEFAULT 30;

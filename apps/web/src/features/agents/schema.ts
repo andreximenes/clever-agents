@@ -43,7 +43,7 @@ export const agentFormSchema = z
       .int()
       .min(5, "Mínimo 5s")
       .max(600, "Máximo 600s")
-      .default(60),
+      .default(30),
     aiProvider: providerEnum,
     aiModel: z.string().trim().min(1, "Informe o modelo"),
     // On create this is required; on update, empty means "keep current key".

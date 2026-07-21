@@ -76,7 +76,7 @@ export const agents = pgTable(
       .references(() => profiles.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     instructions: text("instructions").notNull().default(""),
-    debounceSeconds: integer("debounce_seconds").notNull().default(60),
+    debounceSeconds: integer("debounce_seconds").notNull().default(30),
 
     // AI provider config (key stored encrypted at rest).
     aiProvider: aiProviderEnum("ai_provider").notNull(),

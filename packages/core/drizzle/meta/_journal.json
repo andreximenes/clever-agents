@@ -29,6 +29,13 @@
       "when": 1784646104153,
       "tag": "0003_dry_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784648315640,
+      "tag": "0004_dear_galactus",
+      "breakpoints": true
     }
   ]
 }

@@ -51,7 +51,7 @@ export function AgentForm({
     defaultValues: {
       name: "",
       instructions: DEFAULT_INSTRUCTIONS,
-      debounceSeconds: 60,
+      debounceSeconds: 30,
       aiProvider: "openai",
       aiModel: DEFAULT_MODELS.openai,
       aiApiKey: "",
@@ -126,15 +126,22 @@ export function AgentForm({
           </CardDescription>
           <FieldError>{errors.instructions?.message}</FieldError>
         </div>
-        <div className="max-w-40">
-          <Label htmlFor="debounceSeconds">Espera antes de responder (s)</Label>
-          <Input
-            id="debounceSeconds"
-            type="number"
-            min={5}
-            max={600}
-            {...register("debounceSeconds")}
-          />
+        <div>
+          <div className="max-w-40">
+            <Label htmlFor="debounceSeconds">Espera antes de responder (s)</Label>
+            <Input
+              id="debounceSeconds"
+              type="number"
+              min={5}
+              max={600}
+              {...register("debounceSeconds")}
+            />
+          </div>
+          <CardDescription className="mt-1">
+            O agente aguarda esse tempo <strong>após a última mensagem</strong>. Se
+            o cliente mandar outra antes, a contagem recomeça — assim ele não
+            responde no meio de um assunto.
+          </CardDescription>
           <FieldError>{errors.debounceSeconds?.message}</FieldError>
         </div>
       </Card>
