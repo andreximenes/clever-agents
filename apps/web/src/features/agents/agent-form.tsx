@@ -32,6 +32,11 @@ type Props = {
    * so one Save always submits the whole agent.
    */
   section?: "agente" | "ia" | "whatsapp" | "all";
+  /** Non-secret info about the shared credentials the platform offers. */
+  platform?: {
+    ai: { available: boolean; provider: string; model: string };
+    evolution: { available: boolean; url: string };
+  };
 };
 
 export function AgentForm({
@@ -42,6 +47,7 @@ export function AgentForm({
   hasEvolutionKey,
   canDelete = true,
   section = "all",
+  platform,
 }: Props) {
   const shows = (id: "agente" | "ia" | "whatsapp") =>
     section === "all" || section === id;
@@ -54,6 +60,7 @@ export function AgentForm({
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
@@ -68,9 +75,14 @@ export function AgentForm({
       evolutionUrl: "",
       evolutionApiKey: "",
       evolutionInstanceName: "",
+      usePlatformAi: false,
+      usePlatformEvolution: false,
       ...defaultValues,
     },
   });
+
+  const usePlatformAi = Boolean(watch("usePlatformAi"));
+  const usePlatformEvolution = Boolean(watch("usePlatformEvolution"));
 
   const onSubmit = (values: AgentFormValues) => {
     const fd = new FormData();
@@ -157,7 +169,27 @@ export function AgentForm({
 
       <Card className={cn("space-y-4", !shows("ia") && "hidden")}>
         <CardTitle>Inteligência artificial</CardTitle>
-        <div className="grid gap-4 sm:grid-cols-2">
+
+        {platform?.ai.available ? (
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] bg-[var(--color-surface-2)] p-3">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              {...register("usePlatformAi")}
+            />
+            <span className="text-sm">
+              Usar a IA da plataforma
+              <span className="block text-xs text-[var(--color-muted)]">
+                {platform.ai.provider} · {platform.ai.model}. Sem precisar de
+                chave própria — ideal para testar.
+              </span>
+            </span>
+          </label>
+        ) : null}
+
+        <div
+          className={cn("grid gap-4 sm:grid-cols-2", usePlatformAi && "hidden")}
+        >
           <div>
             <Label htmlFor="aiProvider">Provider</Label>
             <Select
@@ -181,7 +213,7 @@ export function AgentForm({
             <FieldError>{errors.aiModel?.message}</FieldError>
           </div>
         </div>
-        <div>
+        <div className={cn(usePlatformAi && "hidden")}>
           <Label htmlFor="aiApiKey">Chave da API</Label>
           <Input
             id="aiApiKey"
@@ -196,8 +228,26 @@ export function AgentForm({
 
       <Card className={cn("space-y-4", !shows("whatsapp") && "hidden")}>
         <CardTitle>WhatsApp (Evolution API)</CardTitle>
+
+        {platform?.evolution.available ? (
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] bg-[var(--color-surface-2)] p-3">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              {...register("usePlatformEvolution")}
+            />
+            <span className="text-sm">
+              Usar o servidor da plataforma
+              <span className="block text-xs text-[var(--color-muted)]">
+                Só escolha um nome para a instância e leia o QR code. Desmarque
+                para conectar seu próprio servidor Evolution.
+              </span>
+            </span>
+          </label>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+          <div className={cn(usePlatformEvolution && "hidden")}>
             <Label htmlFor="evolutionUrl">URL do servidor Evolution</Label>
             <Input
               id="evolutionUrl"
@@ -219,7 +269,7 @@ export function AgentForm({
             <FieldError>{errors.evolutionInstanceName?.message}</FieldError>
           </div>
         </div>
-        <div>
+        <div className={cn(usePlatformEvolution && "hidden")}>
           <Label htmlFor="evolutionApiKey">API Key da Evolution</Label>
           <Input
             id="evolutionApiKey"

@@ -32,6 +32,12 @@ Você é um atendente virtual simpático e objetivo.
 Descreva aqui o negócio, o tom de voz e o que o agente deve fazer.`;
 
 const providerEnum = z.enum(["openai", "google", "anthropic", "openrouter"]);
+
+/** Accepts both a real boolean (client) and FormData's "true"/"false". */
+const checkbox = z.preprocess(
+  (v) => v === true || v === "true" || v === "on",
+  z.boolean(),
+);
 const evolutionModeEnum = z.enum(["existing", "create"]);
 
 export const agentFormSchema = z
@@ -48,6 +54,11 @@ export const agentFormSchema = z
     aiModel: z.string().trim().min(1, "Informe o modelo"),
     // On create this is required; on update, empty means "keep current key".
     aiApiKey: z.string().trim().default(""),
+    // When true the server injects the platform's shared credentials, so the
+    // key never travels to the browser. FormData sends strings, and
+    // z.coerce.boolean() would read "false" as true — hence the explicit check.
+    usePlatformAi: checkbox,
+    usePlatformEvolution: checkbox,
     evolutionMode: evolutionModeEnum.default("existing"),
     evolutionUrl: z
       .string()

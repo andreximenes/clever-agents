@@ -5,6 +5,7 @@ import { getDb, agentDocuments, agentMembers } from "@clever/core/db";
 import { desc, eq } from "drizzle-orm";
 import { getAgentAccess, canManageAgent } from "@/lib/agent-access";
 import { serverWebEnv } from "@/lib/env";
+import { platformDefaults } from "@/lib/platform-defaults";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { AgentWorkspace } from "@/features/agents/agent-workspace";
@@ -101,6 +102,7 @@ export default async function EditAgentPage({
         canDelete={canManage}
         hasAiKey={Boolean(agent.aiApiKeyEncrypted)}
         hasEvolutionKey={Boolean(agent.evolutionApiKeyEncrypted)}
+        platform={platformDefaults()}
         defaultValues={{
           name: agent.name,
           instructions: agent.instructions,

@@ -103,8 +103,12 @@ function transcriptionKey(): string | undefined {
   return process.env.TRANSCRIPTION_API_KEY || process.env.EMBEDDINGS_API_KEY;
 }
 
+/**
+ * Enabled by an API key (hosted provider) or just a base URL (self-hosted
+ * service, which needs no credentials).
+ */
 export function transcriptionAvailable(): boolean {
-  return Boolean(transcriptionKey());
+  return Boolean(transcriptionKey() || process.env.TRANSCRIPTION_BASE_URL);
 }
 
 /** Transcribes base64-encoded audio to text. Throws when not configured. */
@@ -113,9 +117,12 @@ export async function transcribeAudio(
   mimetype = "audio/ogg",
 ): Promise<string> {
   const apiKey = transcriptionKey();
-  if (!apiKey) throw new Error("TRANSCRIPTION_API_KEY is not set");
+  const explicitBase = process.env.TRANSCRIPTION_BASE_URL;
+  if (!apiKey && !explicitBase) {
+    throw new Error("Transcription is not configured");
+  }
   const baseURL = (
-    process.env.TRANSCRIPTION_BASE_URL ||
+    explicitBase ||
     process.env.EMBEDDINGS_BASE_URL ||
     "https://api.openai.com/v1"
   ).replace(/\/$/, "");
@@ -129,7 +136,7 @@ export async function transcribeAudio(
 
   const res = await fetch(`${baseURL}/audio/transcriptions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
     body: form,
   });
   if (!res.ok) {

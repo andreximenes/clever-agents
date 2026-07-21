@@ -68,5 +68,21 @@ services:
     depends_on:
       - web
 
+  # Local speech-to-text. Internal only — never exposed through Traefik.
+  whisper:
+    build:
+      context: ./apps/whisper
+    image: clever-agents-whisper:latest
+    restart: unless-stopped
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_COMPUTE=${WHISPER_COMPUTE:-int8}
+      - WHISPER_LANGUAGE=pt
+    volumes:
+      - whisper-models:/models
+    expose:
+      - "8000"
+
 volumes:
   letsencrypt:
+  whisper-models:

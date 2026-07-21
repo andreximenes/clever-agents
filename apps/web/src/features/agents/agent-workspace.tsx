@@ -31,6 +31,7 @@ export function AgentWorkspace({
   hasAiKey,
   hasEvolutionKey,
   defaultValues,
+  platform,
   connection,
   documents,
   members,
@@ -40,6 +41,10 @@ export function AgentWorkspace({
   hasAiKey: boolean;
   hasEvolutionKey: boolean;
   defaultValues: Partial<AgentFormValues>;
+  platform?: {
+    ai: { available: boolean; provider: string; model: string };
+    evolution: { available: boolean; url: string };
+  };
   connection: React.ReactNode;
   documents: React.ReactNode;
   members: React.ReactNode | null;
@@ -88,6 +93,7 @@ export function AgentWorkspace({
           hasAiKey={hasAiKey}
           hasEvolutionKey={hasEvolutionKey}
           defaultValues={defaultValues}
+          platform={platform}
           section={isFormTab ? active : "agente"}
         />
       </div>
