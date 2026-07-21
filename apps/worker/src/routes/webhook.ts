@@ -1,6 +1,9 @@
 import { agents, getDb } from "@clever/core/db";
 import { parseInboundMessage } from "@clever/core/evolution";
-import { ingestInboundMessage } from "@clever/core/messaging";
+import {
+  ingestInboundMessage,
+  transcribeInboundAudio,
+} from "@clever/core/messaging";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { enqueueReply } from "../queue.ts";
@@ -71,6 +74,23 @@ export async function registerWebhook(app: FastifyInstance) {
           },
           "inbound message ingested",
         );
+
+        // Audio needs a transcript before the reply job builds the prompt.
+        if (message.type === "audio") {
+          const transcription = await transcribeInboundAudio(db, agent, {
+            messageId: result.messageId,
+            providerMessageId: message.providerMessageId,
+          });
+          request.log.info(
+            {
+              agentId,
+              ok: transcription.ok,
+              reason: transcription.ok ? undefined : transcription.reason,
+              error: transcription.ok ? undefined : transcription.error,
+            },
+            "audio transcription",
+          );
+        }
 
         // Schedule a debounced reply. Ingestion must not fail if the queue does.
         try {

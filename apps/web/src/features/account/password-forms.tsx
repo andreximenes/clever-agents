@@ -5,7 +5,34 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { changePassword, setPassword } from "./actions";
+import { changePassword, setPassword, updateProfileName } from "./actions";
+
+/** Display name shown in the user menu and used when inviting people. */
+export function ProfileNameForm({ initialName }: { initialName: string | null }) {
+  const [state, formAction] = useActionState(updateProfileName, null);
+
+  useEffect(() => {
+    if (state?.success) toast.success(state.success);
+  }, [state]);
+
+  return (
+    <form action={formAction} className="flex max-w-sm items-start gap-2">
+      <div className="flex-1">
+        <Input
+          name="name"
+          defaultValue={initialName ?? ""}
+          placeholder="Seu nome"
+          maxLength={80}
+          required
+        />
+        {state?.error ? (
+          <p className="mt-1 text-sm text-[var(--color-danger)]">{state.error}</p>
+        ) : null}
+      </div>
+      <SubmitButton label="Salvar" pendingLabel="Salvando…" />
+    </form>
+  );
+}
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();

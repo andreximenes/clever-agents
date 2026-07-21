@@ -1,6 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { ChangePasswordForm } from "@/features/account/password-forms";
+import {
+  ChangePasswordForm,
+  ProfileNameForm,
+} from "@/features/account/password-forms";
 
 export default async function AccountPage() {
   const user = await requireUser();
@@ -14,6 +17,16 @@ export default async function AccountPage() {
           {user.role === "admin" ? " · administrador" : ""}
         </p>
       </div>
+
+      <Card className="space-y-4">
+        <div>
+          <CardTitle>Seu nome</CardTitle>
+          <CardDescription>
+            Aparece no menu e nos convites que você envia.
+          </CardDescription>
+        </div>
+        <ProfileNameForm initialName={user.name} />
+      </Card>
 
       <Card className="space-y-4">
         <div>

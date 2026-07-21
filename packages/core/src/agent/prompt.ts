@@ -40,7 +40,8 @@ export function buildModelMessages(messages: Message[]): PromptModelMessage[] {
   return messages
     .map((m): PromptModelMessage | null => {
       const role = m.direction === "in" ? "user" : "assistant";
-      let content = m.content.trim();
+      // A transcribed audio reads exactly like a text message to the model.
+      let content = (m.transcription ?? "").trim() || m.content.trim();
       if (!content && m.type === "audio") content = "[áudio recebido]";
       if (!content && m.type === "image") content = "[imagem recebida]";
       if (!content) return null;

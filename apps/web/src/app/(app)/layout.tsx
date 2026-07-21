@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Bot, Users } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
-import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/user-menu";
 
 export default async function AppLayout({
   children,
@@ -39,24 +39,13 @@ export default async function AppLayout({
               </Link>
             ) : null}
           </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/conta"
-              className="text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]"
-            >
-              {user.email}
-              {user.role === "admin" ? (
-                <span className="ml-2 rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-xs">
-                  admin
-                </span>
-              ) : null}
-            </Link>
-            <form action={signOut}>
-              <Button variant="ghost" size="sm" type="submit">
-                Sair
-              </Button>
-            </form>
-          </div>
+          <UserMenu
+            email={user.email}
+            name={user.name}
+            role={user.role}
+            theme={user.theme}
+            signOutAction={signOut}
+          />
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>

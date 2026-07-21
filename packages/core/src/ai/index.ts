@@ -93,6 +93,52 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   return embeddings;
 }
 
+// ---------------------------------------------------------------------------
+// Speech-to-text for received WhatsApp audio. Uses an OpenAI-compatible
+// transcription endpoint; falls back to the embeddings key when it is the same
+// provider. Without a key, agents simply ask the contact to write instead.
+// ---------------------------------------------------------------------------
+
+function transcriptionKey(): string | undefined {
+  return process.env.TRANSCRIPTION_API_KEY || process.env.EMBEDDINGS_API_KEY;
+}
+
+export function transcriptionAvailable(): boolean {
+  return Boolean(transcriptionKey());
+}
+
+/** Transcribes base64-encoded audio to text. Throws when not configured. */
+export async function transcribeAudio(
+  base64: string,
+  mimetype = "audio/ogg",
+): Promise<string> {
+  const apiKey = transcriptionKey();
+  if (!apiKey) throw new Error("TRANSCRIPTION_API_KEY is not set");
+  const baseURL = (
+    process.env.TRANSCRIPTION_BASE_URL ||
+    process.env.EMBEDDINGS_BASE_URL ||
+    "https://api.openai.com/v1"
+  ).replace(/\/$/, "");
+  const model = process.env.TRANSCRIPTION_MODEL ?? "whisper-1";
+
+  const bytes = Buffer.from(base64, "base64");
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: mimetype }), "audio.ogg");
+  form.append("model", model);
+  form.append("language", "pt");
+
+  const res = await fetch(`${baseURL}/audio/transcriptions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+  });
+  if (!res.ok) {
+    throw new Error(`Transcrição falhou (${res.status}): ${await res.text()}`);
+  }
+  const data = (await res.json()) as { text?: string };
+  return (data.text ?? "").trim();
+}
+
 /** Embeds a single query string. */
 export async function embedQuery(text: string): Promise<number[]> {
   const [embedding] = await embedTexts([text]);

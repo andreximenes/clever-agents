@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import "@uiw/react-md-editor/markdown-editor.css";
 
 // The editor touches `document`/`navigator`, so it must be client-only.
@@ -12,9 +13,35 @@ type Props = {
   height?: number;
 };
 
+/** Follows the app theme (the editor ships its own light/dark styling). */
+function useAppTheme(): "light" | "dark" {
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  useEffect(() => {
+    const read = () =>
+      setTheme(
+        document.documentElement.dataset.theme === "light" ? "light" : "dark",
+      );
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+}
+
 export function MarkdownEditor({ value, onChange, height = 320 }: Props) {
+  const theme = useAppTheme();
+
   return (
-    <div data-color-mode="dark" className="rounded-[var(--radius)] overflow-hidden">
+    <div
+      data-color-mode={theme}
+      className="rounded-[var(--radius)] overflow-hidden"
+    >
       <MDEditor
         value={value}
         onChange={(v) => onChange(v ?? "")}

@@ -8,6 +8,7 @@ export type SessionUser = {
   email: string | null;
   role: "admin" | "user";
   name: string | null;
+  theme: "light" | "dark";
 };
 
 /** Returns the current user + profile, or null if not authenticated. */
@@ -30,6 +31,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     email: user.email ?? null,
     role: profile?.role ?? "user",
     name: profile?.name ?? null,
+    theme: profile?.theme ?? "dark",
   };
 }
 

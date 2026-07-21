@@ -21,6 +21,7 @@ export const EMBEDDING_DIMENSIONS = 1536;
 // ---------------------------------------------------------------------------
 
 export const roleEnum = pgEnum("role", ["admin", "user"]);
+export const themeEnum = pgEnum("theme", ["light", "dark"]);
 export const aiProviderEnum = pgEnum("ai_provider", [
   "openai",
   "google",
@@ -62,6 +63,8 @@ export const profiles = pgTable("profiles", {
     .references(() => authUsers.id, { onDelete: "cascade" }),
   role: roleEnum("role").notNull().default("user"),
   name: text("name"),
+  /** UI preference, so the theme follows the user across devices. */
+  theme: themeEnum("theme").notNull().default("dark"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

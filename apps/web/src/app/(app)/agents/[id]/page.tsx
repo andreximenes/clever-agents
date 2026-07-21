@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, MessagesSquare } from "lucide-react";
 import { getDb, agentDocuments, agentMembers } from "@clever/core/db";
 import { desc, eq } from "drizzle-orm";
 import { getAgentAccess, canManageAgent } from "@/lib/agent-access";
 import { serverWebEnv } from "@/lib/env";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { AgentForm } from "@/features/agents/agent-form";
+import { AgentWorkspace } from "@/features/agents/agent-workspace";
 import { AgentStatusBadge } from "@/features/agents/status-badge";
 import { DocumentsSection } from "@/features/documents/documents-section";
 import { ConnectionCard } from "@/features/whatsapp/connection-card";
@@ -80,66 +80,74 @@ export default async function EditAgentPage({
             </span>
           ) : null}
         </div>
-        <Link href={`/agents/${agent.id}/playground`}>
-          <Button variant="secondary">
-            <MessageSquare size={16} />
-            Testar conversa
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/agents/${agent.id}/conversas`}>
+            <Button variant="secondary">
+              <MessagesSquare size={16} />
+              Conversas
+            </Button>
+          </Link>
+          <Link href={`/agents/${agent.id}/playground`}>
+            <Button variant="secondary">
+              <MessageSquare size={16} />
+              Testar conversa
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="space-y-6">
-        <AgentForm
-          mode="edit"
-          agentId={agent.id}
-          canDelete={canManage}
-          hasAiKey={Boolean(agent.aiApiKeyEncrypted)}
-          hasEvolutionKey={Boolean(agent.evolutionApiKeyEncrypted)}
-          defaultValues={{
-            name: agent.name,
-            instructions: agent.instructions,
-            debounceSeconds: agent.debounceSeconds,
-            aiProvider: agent.aiProvider,
-            aiModel: agent.aiModel,
-            evolutionMode: agent.evolutionMode,
-            evolutionUrl: agent.evolutionUrl ?? "",
-            evolutionInstanceName: agent.evolutionInstanceName ?? "",
-          }}
-        />
-
-        <ConnectionCard
-          agentId={agent.id}
-          initialStatus={agent.status}
-          configured={Boolean(
-            agent.evolutionInstanceName &&
-              agent.evolutionUrl &&
-              agent.evolutionApiKeyEncrypted,
-          )}
-          webhookUrl={`${serverWebEnv().WORKER_PUBLIC_URL}/webhook/evolution/${agent.id}?token=${agent.webhookToken}`}
-        />
-
-        <DocumentsSection
-          agentId={agent.id}
-          documents={docs.map((d) => ({
-            id: d.id,
-            filename: d.filename,
-            status: d.status,
-            summary: d.summary,
-            chunkCount: d.chunkCount,
-            embedded: d.embedded,
-            sizeBytes: d.sizeBytes,
-            error: d.error,
-          }))}
-        />
-
-        {canManage ? (
-          <MembersCard
+      <AgentWorkspace
+        agentId={agent.id}
+        canDelete={canManage}
+        hasAiKey={Boolean(agent.aiApiKeyEncrypted)}
+        hasEvolutionKey={Boolean(agent.evolutionApiKeyEncrypted)}
+        defaultValues={{
+          name: agent.name,
+          instructions: agent.instructions,
+          debounceSeconds: agent.debounceSeconds,
+          aiProvider: agent.aiProvider,
+          aiModel: agent.aiModel,
+          evolutionMode: agent.evolutionMode,
+          evolutionUrl: agent.evolutionUrl ?? "",
+          evolutionInstanceName: agent.evolutionInstanceName ?? "",
+        }}
+        connection={
+          <ConnectionCard
             agentId={agent.id}
-            ownerEmail={ownerEmail}
-            members={members}
+            initialStatus={agent.status}
+            configured={Boolean(
+              agent.evolutionInstanceName &&
+                agent.evolutionUrl &&
+                agent.evolutionApiKeyEncrypted,
+            )}
+            webhookUrl={`${serverWebEnv().WORKER_PUBLIC_URL}/webhook/evolution/${agent.id}?token=${agent.webhookToken}`}
           />
-        ) : null}
-      </div>
+        }
+        documents={
+          <DocumentsSection
+            agentId={agent.id}
+            documents={docs.map((d) => ({
+              id: d.id,
+              filename: d.filename,
+              status: d.status,
+              summary: d.summary,
+              chunkCount: d.chunkCount,
+              embedded: d.embedded,
+              sizeBytes: d.sizeBytes,
+              error: d.error,
+            }))}
+          />
+        }
+        members={
+          canManage ? (
+            <MembersCard
+              agentId={agent.id}
+              ownerEmail={ownerEmail}
+              members={members}
+            />
+          ) : null
+        }
+      />
     </div>
   );
 }

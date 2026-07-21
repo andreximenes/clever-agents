@@ -1,6 +1,11 @@
 "use server";
 
-import { getDb, agentDocuments, agents } from "@clever/core/db";
+import {
+  getDb,
+  agentDocumentChunks,
+  agentDocuments,
+  agents,
+} from "@clever/core/db";
 import { decryptSecret } from "@clever/core/crypto";
 import {
   detectKind,
@@ -8,7 +13,7 @@ import {
   processDocument,
 } from "@clever/core/documents";
 import type { AgentAiConfig } from "@clever/core/ai";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getAgentAccess } from "@/lib/agent-access";
 import { createAdminSupabase } from "@/lib/supabase/server";
@@ -110,6 +115,77 @@ export async function uploadDocument(
 
   revalidatePath(`/agents/${agentId}`);
   return { ok: true };
+}
+
+export type DocumentPreview =
+  | {
+      ok: true;
+      filename: string;
+      summary: string;
+      text: string;
+      truncated: boolean;
+      downloadUrl: string | null;
+      charCount: number;
+      chunkCount: number;
+    }
+  | { ok: false; error: string };
+
+const PREVIEW_CHARS = 20_000;
+
+/**
+ * Content of an uploaded document: the extracted text (rebuilt from its chunks)
+ * plus a short-lived link to the original file in storage.
+ */
+export async function getDocumentPreview(
+  agentId: string,
+  documentId: string,
+): Promise<DocumentPreview> {
+  const access = await getAgentAccess(agentId);
+  if (!access) return { ok: false, error: "Agente não encontrado" };
+
+  const db = getDb();
+  const [doc] = await db
+    .select()
+    .from(agentDocuments)
+    .where(
+      and(
+        eq(agentDocuments.id, documentId),
+        eq(agentDocuments.agentId, agentId),
+      ),
+    )
+    .limit(1);
+  if (!doc) return { ok: false, error: "Documento não encontrado" };
+
+  const chunks = await db
+    .select({ content: agentDocumentChunks.content })
+    .from(agentDocumentChunks)
+    .where(eq(agentDocumentChunks.documentId, documentId))
+    .orderBy(asc(agentDocumentChunks.chunkIndex));
+
+  // Chunks overlap on purpose; join them and let the reader see the flow.
+  const full = chunks.map((c) => c.content).join("\n\n");
+  const truncated = full.length > PREVIEW_CHARS;
+
+  let downloadUrl: string | null = null;
+  if (doc.storagePath) {
+    const supabase = createAdminSupabase();
+    const { data } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(doc.storagePath, 60 * 10);
+    downloadUrl = data?.signedUrl ?? null;
+  }
+
+  return {
+    ok: true,
+    filename: doc.filename,
+    summary: doc.summary,
+    text: truncated ? full.slice(0, PREVIEW_CHARS) : full,
+    truncated,
+    downloadUrl,
+    // Derive from the text so the count is right even for older rows.
+    charCount: doc.charCount || full.length,
+    chunkCount: doc.chunkCount,
+  };
 }
 
 export async function deleteDocument(

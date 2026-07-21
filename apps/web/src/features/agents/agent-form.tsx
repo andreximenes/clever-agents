@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
@@ -26,6 +27,11 @@ type Props = {
   hasEvolutionKey?: boolean;
   /** Invited members can edit but not delete the agent. */
   canDelete?: boolean;
+  /**
+   * Which group of fields to show. Every section stays mounted (hidden via CSS)
+   * so one Save always submits the whole agent.
+   */
+  section?: "agente" | "ia" | "whatsapp" | "all";
 };
 
 export function AgentForm({
@@ -35,7 +41,10 @@ export function AgentForm({
   hasAiKey,
   hasEvolutionKey,
   canDelete = true,
+  section = "all",
 }: Props) {
+  const shows = (id: "agente" | "ia" | "whatsapp") =>
+    section === "all" || section === id;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setDeleting] = useState(false);
@@ -101,7 +110,7 @@ export function AgentForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <Card className="space-y-4">
+      <Card className={cn("space-y-4", !shows("agente") && "hidden")}>
         <CardTitle>Identidade</CardTitle>
         <div>
           <Label htmlFor="name">Nome do agente</Label>
@@ -146,7 +155,7 @@ export function AgentForm({
         </div>
       </Card>
 
-      <Card className="space-y-4">
+      <Card className={cn("space-y-4", !shows("ia") && "hidden")}>
         <CardTitle>Inteligência artificial</CardTitle>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -185,7 +194,7 @@ export function AgentForm({
         </div>
       </Card>
 
-      <Card className="space-y-4">
+      <Card className={cn("space-y-4", !shows("whatsapp") && "hidden")}>
         <CardTitle>WhatsApp (Evolution API)</CardTitle>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

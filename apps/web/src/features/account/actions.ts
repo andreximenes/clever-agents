@@ -2,6 +2,10 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { getDb, profiles } from "@clever/core/db";
+import { eq } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export type PasswordState = { error?: string; success?: string } | null;
@@ -15,6 +19,33 @@ const passwordSchema = z
     message: "As senhas não coincidem",
     path: ["confirm"],
   });
+
+/** Updates the user's display name (shown in the menu and on invites). */
+export async function updateProfileName(
+  _prev: PasswordState,
+  formData: FormData,
+): Promise<PasswordState> {
+  const user = await requireUser();
+  const parsed = z
+    .string()
+    .trim()
+    .min(1, "Informe seu nome")
+    .max(80, "Nome muito longo")
+    .safeParse(String(formData.get("name") ?? ""));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Nome inválido" };
+  }
+
+  const db = getDb();
+  await db
+    .update(profiles)
+    .set({ name: parsed.data })
+    .where(eq(profiles.id, user.id));
+
+  revalidatePath("/conta");
+  revalidatePath("/");
+  return { success: "Nome atualizado" };
+}
 
 /**
  * First-time password for an invited user. Allowed only while the account has

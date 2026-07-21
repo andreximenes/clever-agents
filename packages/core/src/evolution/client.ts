@@ -30,6 +30,13 @@ const connectSchema = z
   })
   .passthrough();
 
+const mediaSchema = z
+  .object({
+    base64: z.string().optional(),
+    mimetype: z.string().optional(),
+  })
+  .passthrough();
+
 const createInstanceSchema = z
   .object({
     qrcode: z
@@ -163,6 +170,31 @@ export function createEvolutionClient(config: EvolutionConfig) {
           events: WEBHOOK_EVENTS,
         },
       });
+    },
+
+    /**
+     * Downloads a received media message as base64 (used to transcribe audio).
+     * Returns null when the server can't produce it.
+     */
+    async getMediaBase64(
+      instanceName: string,
+      messageId: string,
+    ): Promise<{ base64: string; mimetype?: string } | null> {
+      try {
+        const data = await request(
+          "POST",
+          `/chat/getBase64FromMediaMessage/${encodeURIComponent(instanceName)}`,
+          { message: { key: { id: messageId } }, convertToMp4: false },
+        );
+        const parsed = mediaSchema.safeParse(data);
+        if (!parsed.success || !parsed.data.base64) return null;
+        return {
+          base64: parsed.data.base64,
+          mimetype: parsed.data.mimetype,
+        };
+      } catch {
+        return null;
+      }
     },
 
     /** Sends a plain-text WhatsApp message. */

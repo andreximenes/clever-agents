@@ -2,11 +2,12 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { Eye, FileText, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { deleteDocument, uploadDocument } from "./actions";
+import { DocumentPreviewDialog } from "./document-preview";
 
 export type DocumentItem = {
   id: string;
@@ -38,6 +39,7 @@ export function DocumentsSection({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<DocumentItem | null>(null);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -135,20 +137,41 @@ export function DocumentsSection({
                   </p>
                 ) : null}
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(doc.id)}
-                disabled={isPending && busyId === doc.id}
-                aria-label="Remover documento"
-              >
-                <Trash2 size={15} />
-              </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                {doc.status === "ready" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewing(doc)}
+                    aria-label={`Ver conteúdo de ${doc.filename}`}
+                  >
+                    <Eye size={15} />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(doc.id)}
+                  disabled={isPending && busyId === doc.id}
+                  aria-label="Remover documento"
+                >
+                  <Trash2 size={15} />
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
       )}
+      {viewing ? (
+        <DocumentPreviewDialog
+          agentId={agentId}
+          documentId={viewing.id}
+          filename={viewing.filename}
+          onClose={() => setViewing(null)}
+        />
+      ) : null}
     </Card>
   );
 }
