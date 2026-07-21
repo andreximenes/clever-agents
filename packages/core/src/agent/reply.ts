@@ -93,13 +93,27 @@ export async function runConversationReply(
       apiKey: decryptSecret(agent.evolutionApiKeyEncrypted),
     });
     // Address the reply to the exact JID WhatsApp used (handles @lid contacts).
-    const res = (await client.sendText(
-      agent.evolutionInstanceName,
-      contact.jid ?? contact.phone,
-      text,
-    )) as { key?: { id?: string } } | null;
-    providerMessageId = res?.key?.id;
-    sent = true;
+    const target = contact.jid ?? contact.phone;
+    try {
+      const res = (await client.sendText(
+        agent.evolutionInstanceName,
+        target,
+        text,
+      )) as { key?: { id?: string } } | null;
+      providerMessageId = res?.key?.id;
+      sent = true;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "erro";
+      // Keep the generated reply out of history when it never reached anyone,
+      // and surface a message that names the actual problem.
+      return {
+        ok: false,
+        reason: "error",
+        error: target.endsWith("@lid")
+          ? `Não foi possível responder a ${target}: este servidor Evolution não envia para identificadores @lid (atualize a Evolution API). Detalhe: ${detail}`
+          : `Falha ao enviar para ${target}: ${detail}`,
+      };
+    }
   }
 
   await recordOutboundMessage(db, conversationId, text, providerMessageId);
