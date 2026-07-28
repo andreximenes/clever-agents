@@ -7,6 +7,7 @@ import { z } from "zod";
 import { canManageAgent, getAgentAccess } from "@/lib/agent-access";
 import { agentInviteEmail, sendEmail } from "@/lib/email";
 import { createAdminSupabase } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site-url";
 
 export type MemberResult =
   | { ok: true; message: string }
@@ -14,8 +15,6 @@ export type MemberResult =
 
 const emailSchema = z.string().email("Email inválido");
 
-const siteUrl = () =>
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 /**
  * Invites someone (by email) to collaborate on a single agent. Creates the
@@ -70,7 +69,21 @@ export async function inviteAgentMember(
       return { ok: false, error: error?.message ?? "Falha ao criar o convite" };
     }
     userId = data.user.id;
-    link = data.properties?.action_link ?? link;
+
+    // Build our own confirmation URL from the hashed token instead of using
+    // `action_link`. The Supabase link bounces through /auth/v1/verify and
+    // hands the session back in the URL fragment, which a server route cannot
+    // read — the invite then dead-ends on the login form. With `token_hash`
+    // our callback verifies it server-side.
+    const hashedToken = data.properties?.hashed_token;
+    if (hashedToken) {
+      const target = encodeURIComponent(
+        `/definir-senha?next=/agents/${agentId}`,
+      );
+      link = `${siteUrl()}/auth/callback?token_hash=${hashedToken}&type=invite&next=${target}`;
+    } else {
+      link = data.properties?.action_link ?? link;
+    }
   }
 
   if (userId === access.agent.ownerId) {

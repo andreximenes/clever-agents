@@ -4,11 +4,9 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminSupabase } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site-url";
 
 const inviteSchema = z.object({ email: z.string().email("Email inválido") });
-
-const siteUrl = () =>
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export async function inviteUser(
   _prev: { error?: string; success?: string } | null,
