@@ -2,6 +2,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import type { Database } from "../db/client.ts";
 import { contacts, messages } from "../db/schema.ts";
 import { generateReply, type AgentAiConfig } from "../ai/index.ts";
+import { renderMessageContent } from "./prompt.ts";
 
 const MEMORY_WINDOW = 24;
 
@@ -29,8 +30,16 @@ export async function updateContactSummary(
     .where(eq(contacts.id, contactId))
     .limit(1);
 
+  // Same rendering the reply model sees: audio messages have empty `content`,
+  // their words live in `transcription` — without this the summary never
+  // records anything the contact said by voice.
   const transcript = recent
-    .map((m) => `${m.direction === "in" ? "Cliente" : "Agente"}: ${m.content}`)
+    .map((m) => {
+      const content = renderMessageContent(m);
+      if (!content) return null;
+      return `${m.direction === "in" ? "Cliente" : "Agente"}: ${content}`;
+    })
+    .filter((line): line is string => line !== null)
     .join("\n");
 
   const summary = await generateReply(aiCfg, {
@@ -38,7 +47,10 @@ export async function updateContactSummary(
       "Você mantém uma memória curta de um cliente para um atendente de WhatsApp. " +
       "Atualize o resumo com base no resumo anterior e na conversa recente. " +
       "Escreva no máximo 6 linhas, em português do Brasil, com fatos úteis: nome, " +
-      "preferências, pedidos, pendências e combinados. Não invente nada.",
+      "preferências, pedidos, pendências e combinados. Não invente nada. " +
+      "Áudios chegam transcritos e são entendidos normalmente: nunca registre " +
+      "que o agente não ouve áudios ou que o cliente deve preferir texto. " +
+      "Se o resumo anterior disser algo assim, remova.",
     prompt:
       `Resumo anterior:\n${contact?.summary || "(vazio)"}\n\n` +
       `Conversa recente:\n${transcript}\n\n` +

@@ -7,12 +7,16 @@ export const AI_PROVIDERS = [
   { value: "openrouter", label: "OpenRouter" },
 ] as const;
 
-/** Suggested default model per provider (user can override the text). */
+/**
+ * Suggested default model per provider (user can override the text). Picked for
+ * the same trade-off in every case: cheap enough for high message volume, but
+ * reliable at following the platform rules in the system prompt.
+ */
 export const DEFAULT_MODELS: Record<string, string> = {
-  openai: "gpt-4o-mini",
-  google: "gemini-1.5-flash",
-  anthropic: "claude-3-5-haiku-latest",
-  openrouter: "openai/gpt-4o-mini",
+  openai: "gpt-4.1-mini",
+  google: "gemini-2.5-flash-lite",
+  anthropic: "claude-haiku-4-5",
+  openrouter: "google/gemini-2.5-flash-lite",
 };
 
 /** Prompt base pré-pronto (Markdown) — o usuário edita só o texto das instruções. */

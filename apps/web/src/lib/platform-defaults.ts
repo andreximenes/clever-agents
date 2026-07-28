@@ -24,7 +24,7 @@ export function platformDefaults(): PlatformDefaults {
     ai: {
       available: Boolean(process.env.PLATFORM_AI_API_KEY),
       provider: provider(),
-      model: process.env.PLATFORM_AI_MODEL ?? "openai/gpt-4o-mini",
+      model: process.env.PLATFORM_AI_MODEL ?? "google/gemini-2.5-flash-lite",
     },
     evolution: {
       available: Boolean(
@@ -42,7 +42,7 @@ export function platformAiSecret() {
   if (!apiKey) return null;
   return {
     provider: provider(),
-    model: process.env.PLATFORM_AI_MODEL ?? "openai/gpt-4o-mini",
+    model: process.env.PLATFORM_AI_MODEL ?? "google/gemini-2.5-flash-lite",
     apiKey,
   };
 }
