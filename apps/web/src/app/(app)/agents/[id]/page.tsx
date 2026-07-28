@@ -137,6 +137,7 @@ export default async function EditAgentPage({
               embedded: d.embedded,
               sizeBytes: d.sizeBytes,
               error: d.error,
+              canRetry: Boolean(d.storagePath),
             }))}
           />
         }

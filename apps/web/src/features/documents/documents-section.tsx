@@ -2,11 +2,11 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { Eye, FileText, Loader2, RotateCw, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { deleteDocument, uploadDocument } from "./actions";
+import { deleteDocument, retryDocument, uploadDocument } from "./actions";
 import { DocumentPreviewDialog } from "./document-preview";
 
 export type DocumentItem = {
@@ -18,6 +18,8 @@ export type DocumentItem = {
   embedded: boolean;
   sizeBytes: number;
   error: string | null;
+  /** False when the upload itself failed — there is no stored file to reprocess. */
+  canRetry: boolean;
 };
 
 const ACCEPT = ".pdf,.xlsx,.xls,.csv,.docx,.doc,.txt,.md";
@@ -51,6 +53,17 @@ export function DocumentsSection({
       if (result.ok) toast.success("Documento processado");
       else toast.error(result.error);
       if (inputRef.current) inputRef.current.value = "";
+      router.refresh();
+    });
+  };
+
+  const onRetry = (id: string) => {
+    setBusyId(id);
+    startTransition(async () => {
+      const result = await retryDocument(agentId, id);
+      if (result.ok) toast.success("Documento processado");
+      else toast.error(result.error);
+      setBusyId(null);
       router.refresh();
     });
   };
@@ -134,10 +147,27 @@ export function DocumentsSection({
                 {doc.status === "error" && doc.error ? (
                   <p className="mt-1 text-xs text-[var(--color-danger)]">
                     {doc.error}
+                    {doc.canRetry ? "" : " · envie o arquivo novamente"}
                   </p>
                 ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                {doc.status === "error" && doc.canRetry ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRetry(doc.id)}
+                    disabled={isPending}
+                    aria-label={`Tentar processar ${doc.filename} novamente`}
+                  >
+                    {isPending && busyId === doc.id ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <RotateCw size={15} />
+                    )}
+                  </Button>
+                ) : null}
                 {doc.status === "ready" ? (
                   <Button
                     type="button"
