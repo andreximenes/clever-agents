@@ -2,7 +2,7 @@
 
 Última atualização: 2026-07-20. Onde o projeto está e como retomar.
 
-## Onde paramos
+## Onde paramos ss
 
 - **Fase 1 — concluída e testada.** Monorepo, banco (Supabase + Drizzle + RLS),
   auth, CRUD de agentes, convite de usuários pelo admin.
@@ -27,6 +27,7 @@ Agente demo pronto para testar: **"Padaria do Zé (demo)"** (usa a chave OpenRou
 de teste do `.env`, com um documento de cardápio). Pode excluir quando quiser.
 
 ### Próximo passo — Fase 4 (experiência) e Fase 5 (produção)
+
 - Transcrição de áudio (WhatsApp), tela de conversas reais em tempo real (Realtime).
 - Sentry + logs estruturados, testes E2E, Docker Compose + deploy na VPS.
 - Teste ao vivo do WhatsApp real (depende do Evolution do André — ver seção abaixo).
@@ -49,6 +50,7 @@ Usa a **mesma `APP_ENCRYPTION_KEY`** do ambiente local — se divergir, as chave
 IA/Evolution já gravadas no banco não descriptografam.
 
 Pegadinhas encontradas neste deploy:
+
 - **Traefik < 3.5 não fala com Docker 29+** ("client version 1.24 is too old").
   Fixado em `traefik:v3.6`.
 - **Firewall em duas camadas**: o iptables da instância já foi liberado (80/443,
