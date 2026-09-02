@@ -1,0 +1,96 @@
+# Compose usado quando o stack é administrado pelo Coolify.
+#
+# Diferença para o docker-compose.yml: aqui não existe o serviço traefik. Quem
+# escuta em 80/443, termina o TLS e emite os certificados é o coolify-proxy, que
+# é o Traefik do próprio Coolify. Por isso as labels seguem a convenção dele:
+# entrypoints http/https, certresolver letsencrypt e rede coolify.
+#
+# O docker-compose.yml original continua valendo para deploy manual pelo deploy.sh.
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    image: clever-agents:latest
+    restart: unless-stopped
+    working_dir: /repo
+    command: pnpm --filter @clever/web start
+    env_file: .env
+    expose:
+      - "3000"
+    networks: [clever, coolify]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      # http: só redireciona para https
+      - traefik.http.routers.clever-web-http.entryPoints=http
+      - traefik.http.routers.clever-web-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)
+      - traefik.http.routers.clever-web-http.middlewares=redirect-to-https
+      - traefik.http.routers.clever-web-http.service=clever-web
+      # https: o painel
+      - traefik.http.routers.clever-web-https.entryPoints=https
+      - traefik.http.routers.clever-web-https.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)
+      - traefik.http.routers.clever-web-https.tls=true
+      - traefik.http.routers.clever-web-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.clever-web-https.middlewares=gzip
+      - traefik.http.routers.clever-web-https.service=clever-web
+      - traefik.http.services.clever-web.loadbalancer.server.port=3000
+
+  worker:
+    image: clever-agents:latest
+    restart: unless-stopped
+    working_dir: /repo
+    command: pnpm --filter @clever/worker start
+    env_file: .env
+    expose:
+      - "3001"
+    networks: [clever, coolify]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      # A Evolution entrega em /webhook/... Isso tem que ir para o worker, não
+      # para o painel, por isso a prioridade maior que a rota do web.
+      - traefik.http.routers.clever-worker-http.entryPoints=http
+      - traefik.http.routers.clever-worker-http.rule=Host(`${DOMAIN}`) && (PathPrefix(`/webhook`) || Path(`/health`))
+      - traefik.http.routers.clever-worker-http.priority=100
+      - traefik.http.routers.clever-worker-http.middlewares=redirect-to-https
+      - traefik.http.routers.clever-worker-http.service=clever-worker
+      - traefik.http.routers.clever-worker-https.entryPoints=https
+      - traefik.http.routers.clever-worker-https.rule=Host(`${DOMAIN}`) && (PathPrefix(`/webhook`) || Path(`/health`))
+      - traefik.http.routers.clever-worker-https.priority=100
+      - traefik.http.routers.clever-worker-https.tls=true
+      - traefik.http.routers.clever-worker-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.clever-worker-https.service=clever-worker
+      - traefik.http.services.clever-worker.loadbalancer.server.port=3001
+    depends_on:
+      - web
+
+  # Transcrição local. Interna, nunca exposta pelo proxy: fica só na rede clever.
+  whisper:
+    build:
+      context: ./apps/whisper
+    image: clever-agents-whisper:latest
+    restart: unless-stopped
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_COMPUTE=${WHISPER_COMPUTE:-int8}
+      - WHISPER_LANGUAGE=pt
+    volumes:
+      - whisper-models:/models
+    expose:
+      - "8000"
+    networks: [clever]
+
+networks:
+  # Rede privada do stack: é por ela que o worker fala com o whisper.
+  clever:
+  # Rede do Coolify, criada por ele. Só web e worker entram, para o proxy alcançá-los.
+  coolify:
+    external: true
+
+volumes:
+  whisper-models:
