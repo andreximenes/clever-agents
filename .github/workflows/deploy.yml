@@ -1,8 +1,20 @@
-name: Deploy
+name: Deploy legado (manual)
+
+# A produção passou a ser implantada pelo Coolify em 02/09/2026:
+#   coolify.alxit.com.br -> projeto alxit -> clever-agents
+# Ele usa o docker-compose.coolify.yml, que não sobe traefik próprio: quem
+# escuta em 80/443 no servidor OCI é o coolify-proxy.
+#
+# O gatilho por push foi REMOVIDO de propósito. Este workflow usa o
+# docker-compose.yml antigo, que traz o traefik do stack, então cada push
+# recriava o stack velho e brigava com o Coolify pelas portas. Foi exatamente
+# isso que derrubou a produção durante a migração.
+#
+# O arquivo continua aqui como caminho de rollback. Antes de rodar manualmente,
+# pare o proxy do Coolify no servidor OCI, senão o deploy falha em conflito de
+# porta e o site fica fora do ar no meio do caminho.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
