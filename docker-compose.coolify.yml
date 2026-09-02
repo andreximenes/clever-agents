@@ -26,14 +26,17 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=coolify
-      # http: só redireciona para https
+      # os middlewares abaixo precisam ser declarados: nao vem prontos do proxy
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.gzip.compress=true
+      # http: so redireciona para https
       - traefik.http.routers.clever-web-http.entryPoints=http
-      - traefik.http.routers.clever-web-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)
+      - traefik.http.routers.clever-web-http.rule=Host(`clever-agents.alxit.com.br`) && PathPrefix(`/`)
       - traefik.http.routers.clever-web-http.middlewares=redirect-to-https
       - traefik.http.routers.clever-web-http.service=clever-web
       # https: o painel
       - traefik.http.routers.clever-web-https.entryPoints=https
-      - traefik.http.routers.clever-web-https.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)
+      - traefik.http.routers.clever-web-https.rule=Host(`clever-agents.alxit.com.br`) && PathPrefix(`/`)
       - traefik.http.routers.clever-web-https.tls=true
       - traefik.http.routers.clever-web-https.tls.certresolver=letsencrypt
       - traefik.http.routers.clever-web-https.middlewares=gzip
@@ -52,15 +55,18 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=coolify
+      # os middlewares abaixo precisam ser declarados: nao vem prontos do proxy
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.gzip.compress=true
       # A Evolution entrega em /webhook/... Isso tem que ir para o worker, não
       # para o painel, por isso a prioridade maior que a rota do web.
       - traefik.http.routers.clever-worker-http.entryPoints=http
-      - traefik.http.routers.clever-worker-http.rule=Host(`${DOMAIN}`) && (PathPrefix(`/webhook`) || Path(`/health`))
+      - traefik.http.routers.clever-worker-http.rule=Host(`clever-agents.alxit.com.br`) && (PathPrefix(`/webhook`) || Path(`/health`))
       - traefik.http.routers.clever-worker-http.priority=100
       - traefik.http.routers.clever-worker-http.middlewares=redirect-to-https
       - traefik.http.routers.clever-worker-http.service=clever-worker
       - traefik.http.routers.clever-worker-https.entryPoints=https
-      - traefik.http.routers.clever-worker-https.rule=Host(`${DOMAIN}`) && (PathPrefix(`/webhook`) || Path(`/health`))
+      - traefik.http.routers.clever-worker-https.rule=Host(`clever-agents.alxit.com.br`) && (PathPrefix(`/webhook`) || Path(`/health`))
       - traefik.http.routers.clever-worker-https.priority=100
       - traefik.http.routers.clever-worker-https.tls=true
       - traefik.http.routers.clever-worker-https.tls.certresolver=letsencrypt
