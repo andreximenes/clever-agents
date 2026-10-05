@@ -6,6 +6,10 @@
 # entrypoints http/https, certresolver letsencrypt e rede coolify.
 #
 # O docker-compose.yml original continua valendo para deploy manual pelo deploy.sh.
+#
+# Transcrição: o alx-whisper (https://whisper.alxit.com.br, repositório
+# andreximenes/alx-whisper), compartilhado com a Faro Imob. Configurado por
+# TRANSCRIPTION_BASE_URL e TRANSCRIPTION_API_KEY (token do Clever lá).
 
 services:
   web:
@@ -75,28 +79,10 @@ services:
     depends_on:
       - web
 
-  # Transcrição local. Interna, nunca exposta pelo proxy: fica só na rede clever.
-  whisper:
-    build:
-      context: ./apps/whisper
-    image: clever-agents-whisper:latest
-    restart: unless-stopped
-    environment:
-      - WHISPER_MODEL=${WHISPER_MODEL:-small}
-      - WHISPER_COMPUTE=${WHISPER_COMPUTE:-int8}
-      - WHISPER_LANGUAGE=pt
-    volumes:
-      - whisper-models:/models
-    expose:
-      - "8000"
-    networks: [clever]
-
 networks:
-  # Rede privada do stack: é por ela que o worker fala com o whisper.
+  # Rede privada do stack.
   clever:
   # Rede do Coolify, criada por ele. Só web e worker entram, para o proxy alcançá-los.
   coolify:
     external: true
 
-volumes:
-  whisper-models:
