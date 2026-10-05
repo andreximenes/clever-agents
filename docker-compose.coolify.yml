@@ -49,6 +49,9 @@ services:
 
   worker:
     image: clever-agents:latest
+    # A imagem é a que o web acabou de montar: nunca baixar. Sem isso, o Coolify
+    # (4.3.x) tenta puxar clever-agents:latest do Docker Hub antes do build e falha.
+    pull_policy: never
     restart: unless-stopped
     working_dir: /repo
     command: pnpm --filter @clever/worker start
