@@ -14,7 +14,7 @@ type WebhookRoute = {
 };
 
 /**
- * Receives Evolution webhook events for an agent. Authenticated by the agent's
+ * Receives Evolution Go webhook events for an agent. Authenticated by the agent's
  * per-webhook token (query `?token=` or `x-webhook-token` header). Inbound
  * individual-chat messages are persisted; everything else is acknowledged and
  * ignored.
@@ -45,18 +45,15 @@ export async function registerWebhook(app: FastifyInstance) {
         // Log why, otherwise "nothing happened" is impossible to debug.
         const body = request.body as {
           event?: string;
-          data?: {
-            key?: { fromMe?: boolean; remoteJid?: string };
-            messageType?: string;
-          };
+          data?: { Info?: { Chat?: string; IsFromMe?: boolean; Type?: string } };
         } | null;
         request.log.info(
           {
             agentId,
             event: body?.event,
-            fromMe: body?.data?.key?.fromMe,
-            remoteJid: body?.data?.key?.remoteJid,
-            messageType: body?.data?.messageType,
+            fromMe: body?.data?.Info?.IsFromMe,
+            chat: body?.data?.Info?.Chat,
+            messageType: body?.data?.Info?.Type,
           },
           "webhook ignored",
         );
@@ -80,6 +77,7 @@ export async function registerWebhook(app: FastifyInstance) {
           const transcription = await transcribeInboundAudio(db, agent, {
             messageId: result.messageId,
             providerMessageId: message.providerMessageId,
+            rawMessage: message.rawMessage,
           });
           request.log.info(
             {

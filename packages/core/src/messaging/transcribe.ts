@@ -16,7 +16,12 @@ export type TranscriptionResult =
 export async function transcribeInboundAudio(
   db: Database,
   agent: Agent,
-  input: { messageId: string; providerMessageId: string | null },
+  input: {
+    messageId: string;
+    providerMessageId: string | null;
+    /** Raw message from the webhook (required by Evolution Go). */
+    rawMessage?: unknown;
+  },
 ): Promise<TranscriptionResult> {
   if (!transcriptionAvailable()) return { ok: false, reason: "disabled" };
   if (
@@ -36,6 +41,7 @@ export async function transcribeInboundAudio(
     const media = await client.getMediaBase64(
       agent.evolutionInstanceName,
       input.providerMessageId,
+      input.rawMessage,
     );
     if (!media) return { ok: false, reason: "no_media" };
 

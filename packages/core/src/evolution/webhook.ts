@@ -1,6 +1,4 @@
-import { z } from "zod";
-
-/** A normalized inbound WhatsApp message extracted from an Evolution webhook. */
+/** A normalized inbound WhatsApp message extracted from an Evolution Go webhook. */
 export type InboundMessage = {
   /** Local part of the JID: a phone number, or a LID when WhatsApp hides it. */
   phone: string;
@@ -11,72 +9,68 @@ export type InboundMessage = {
   text: string;
   providerMessageId: string | null;
   timestamp: number | null;
+  /** Raw WhatsApp message object (Evolution Go needs it to download audio). */
+  rawMessage?: unknown;
 };
 
-const webhookSchema = z
-  .object({
-    event: z.string(),
-    instance: z.string().optional(),
-    data: z
-      .object({
-        key: z
-          .object({
-            remoteJid: z.string(),
-            fromMe: z.boolean().optional(),
-            id: z.string().optional(),
-          })
-          .passthrough(),
-        pushName: z.string().nullish(),
-        messageType: z.string().optional(),
-        messageTimestamp: z.union([z.number(), z.string()]).nullish(),
-        message: z.record(z.string(), z.unknown()).nullish(),
-      })
-      .passthrough(),
-  })
-  .passthrough();
-
-function isMessagesUpsert(event: string): boolean {
-  const e = event.toLowerCase().replace(/_/g, ".");
-  return e === "messages.upsert";
-}
-
 /**
- * Extracts a single inbound individual-chat message from an Evolution webhook
+ * Extracts a single inbound individual-chat message from an Evolution Go webhook
  * body, or null when the event isn't an inbound message we handle (group
  * messages, our own outbound echoes, status broadcasts, etc.).
  */
 export function parseInboundMessage(body: unknown): InboundMessage | null {
-  const parsed = webhookSchema.safeParse(body);
-  if (!parsed.success) return null;
-  const { event, data } = parsed.data;
+  return parseGoMessage(body);
+}
 
-  if (!isMessagesUpsert(event)) return null;
-  if (data.key.fromMe) return null;
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): Obj => (v && typeof v === "object" ? (v as Obj) : {});
+const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
-  const jid = data.key.remoteJid;
-  // Individual chats only. WhatsApp uses @s.whatsapp.net and, increasingly,
-  // @lid (privacy-preserving ids). Skip groups (@g.us) and status broadcasts.
+/**
+ * Evolution Go webhook: `{ event: "Message", instanceId, data: { Info, Message } }`
+ * (whatsmeow's `events.Message` as JSON; format checked against a real event).
+ */
+function parseGoMessage(body: unknown): InboundMessage | null {
+  const root = obj(body);
+  if (str(root.event).toLowerCase() !== "message") return null;
+  const payload = obj(root.data);
+  const info = obj(payload.Info);
+  if (!info.Chat || info.IsFromMe || info.IsGroup || payload.IsEdit) return null;
+
+  // WhatsApp sometimes identifies the chat by an opaque @lid; the real number
+  // travels in SenderAlt, and replies must go to the number.
+  let jid = str(info.Chat);
+  if (jid.endsWith("@lid")) {
+    const alt = str(info.SenderAlt);
+    if (alt.endsWith("@s.whatsapp.net")) jid = alt;
+  }
   if (!jid.endsWith("@s.whatsapp.net") && !jid.endsWith("@lid")) return null;
   const phone = jid.split("@")[0] ?? "";
-  if (!phone) return null;
+  const id = str(info.ID);
+  if (!phone || !id) return null;
 
-  const message = data.message ?? {};
-  const { type, text } = extractContent(message, data.messageType);
+  const message = obj(payload.Message);
+  // Reactions, protocol/poll updates are not conversation turns.
+  if (message.reactionMessage || message.protocolMessage || message.pollUpdateMessage) {
+    return null;
+  }
+  const { type, text } = extractContent(message);
+  const ts = Date.parse(str(info.Timestamp));
 
   return {
     phone,
     jid,
-    pushName: data.pushName ?? null,
+    pushName: str(info.PushName) || null,
     type,
     text,
-    providerMessageId: data.key.id ?? null,
-    timestamp: normalizeTimestamp(data.messageTimestamp),
+    providerMessageId: id,
+    timestamp: Number.isNaN(ts) ? null : Math.floor(ts / 1000),
+    rawMessage: type === "audio" ? message : undefined,
   };
 }
 
 function extractContent(
   message: Record<string, unknown>,
-  messageType?: string,
 ): { type: InboundMessage["type"]; text: string } {
   const conversation = message.conversation;
   if (typeof conversation === "string") return { type: "text", text: conversation };
@@ -87,22 +81,13 @@ function extractContent(
     if (typeof t === "string") return { type: "text", text: t };
   }
 
-  if (message.audioMessage || messageType === "audioMessage") {
+  if (message.audioMessage) {
     return { type: "audio", text: "" };
   }
-  if (message.imageMessage || messageType === "imageMessage") {
+  if (message.imageMessage) {
     const caption = (message.imageMessage as { caption?: unknown })?.caption;
     return { type: "image", text: typeof caption === "string" ? caption : "" };
   }
 
   return { type: "text", text: "" };
-}
-
-function normalizeTimestamp(value: unknown): number | null {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
 }

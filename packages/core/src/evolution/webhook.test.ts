@@ -1,75 +1,90 @@
 import { describe, expect, it } from "vitest";
 import { parseInboundMessage } from "./webhook.ts";
 
-const base = (message: unknown, extra: Record<string, unknown> = {}) => ({
-  event: "messages.upsert",
-  instance: "inst",
+/** Evolution Go webhook: whatsmeow `events.Message` wrapped in `{ event, data }`. */
+const event = (
+  message: Record<string, unknown>,
+  info: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
+) => ({
+  event: "Message",
+  instanceId: "inst-1",
   data: {
-    key: { remoteJid: "5511999999999@s.whatsapp.net", fromMe: false, id: "ABC" },
-    pushName: "Fulano",
-    message,
+    Info: {
+      Chat: "5511999999999@s.whatsapp.net",
+      Sender: "5511999999999@s.whatsapp.net",
+      IsFromMe: false,
+      IsGroup: false,
+      ID: "3EB0ABC",
+      PushName: "Fulano",
+      Timestamp: "2026-11-25T20:00:00-03:00",
+      ...info,
+    },
+    Message: message,
     ...extra,
   },
 });
 
-describe("parseInboundMessage", () => {
+describe("parseInboundMessage (Evolution Go)", () => {
   it("parses a plain text message", () => {
-    const msg = parseInboundMessage(base({ conversation: "Olá, bom dia" }));
-    expect(msg).toEqual({
+    expect(parseInboundMessage(event({ conversation: "Olá, bom dia" }))).toEqual({
       phone: "5511999999999",
       jid: "5511999999999@s.whatsapp.net",
       pushName: "Fulano",
       type: "text",
       text: "Olá, bom dia",
-      providerMessageId: "ABC",
-      timestamp: null,
+      providerMessageId: "3EB0ABC",
+      timestamp: Date.parse("2026-11-25T20:00:00-03:00") / 1000,
     });
   });
 
-  it("accepts the newer @lid identifiers", () => {
-    const body = base({ conversation: "ola" });
-    body.data.key.remoteJid = "44384510828771@lid";
-    const msg = parseInboundMessage(body);
-    expect(msg?.phone).toBe("44384510828771");
-    expect(msg?.jid).toBe("44384510828771@lid");
-    expect(msg?.text).toBe("ola");
+  it("reads extended text", () => {
+    const msg = parseInboundMessage(event({ extendedTextMessage: { text: "link aqui" } }));
+    expect(msg?.text).toBe("link aqui");
   });
 
-  it("parses an extended text message", () => {
+  it("swaps an @lid chat for the real number in SenderAlt", () => {
     const msg = parseInboundMessage(
-      base({ extendedTextMessage: { text: "resposta" } }),
+      event({ conversation: "oi" }, { Chat: "123@lid", SenderAlt: "5581988887777@s.whatsapp.net" }),
     );
-    expect(msg?.text).toBe("resposta");
-    expect(msg?.type).toBe("text");
+    expect(msg?.jid).toBe("5581988887777@s.whatsapp.net");
+    expect(msg?.phone).toBe("5581988887777");
   });
 
-  it("classifies audio messages", () => {
-    const msg = parseInboundMessage(
-      base({ audioMessage: { url: "x" } }, { messageType: "audioMessage" }),
-    );
+  it("keeps the @lid when no alternative number is sent", () => {
+    const msg = parseInboundMessage(event({ conversation: "oi" }, { Chat: "123@lid" }));
+    expect(msg?.jid).toBe("123@lid");
+  });
+
+  it("marks audio and keeps the raw message for download", () => {
+    const audio = { audioMessage: { url: "x", mimetype: "audio/ogg" } };
+    const msg = parseInboundMessage(event(audio));
     expect(msg?.type).toBe("audio");
-    expect(msg?.text).toBe("");
+    expect(msg?.rawMessage).toEqual(audio);
   });
 
-  it("ignores our own outbound echoes (fromMe)", () => {
-    const body = base({ conversation: "eco" });
-    body.data.key.fromMe = true;
+  it("reads an image caption", () => {
+    const msg = parseInboundMessage(event({ imageMessage: { caption: "foto" } }));
+    expect(msg).toMatchObject({ type: "image", text: "foto" });
+    expect(msg?.rawMessage).toBeUndefined();
+  });
+
+  it("returns null when the timestamp is unreadable", () => {
+    const msg = parseInboundMessage(event({ conversation: "oi" }, { Timestamp: "nope" }));
+    expect(msg?.timestamp).toBeNull();
+  });
+
+  it.each([
+    ["our own echo", event({ conversation: "x" }, { IsFromMe: true })],
+    ["a group", event({ conversation: "x" }, { Chat: "123@g.us", IsGroup: true })],
+    ["a status broadcast", event({ conversation: "x" }, { Chat: "status@broadcast" })],
+    ["an edit", event({ conversation: "x" }, {}, { IsEdit: true })],
+    ["a reaction", event({ reactionMessage: { text: "👍" } })],
+    ["a protocol message", event({ protocolMessage: {} })],
+    ["a message without id", event({ conversation: "x" }, { ID: "" })],
+    ["another event", { event: "Connected", data: {} }],
+    ["garbage", null],
+  ])("ignores %s", (_label, body) => {
     expect(parseInboundMessage(body)).toBeNull();
-  });
-
-  it("ignores group messages", () => {
-    const body = base({ conversation: "grupo" });
-    body.data.key.remoteJid = "12345@g.us";
-    expect(parseInboundMessage(body)).toBeNull();
-  });
-
-  it("ignores non messages.upsert events", () => {
-    const body = { ...base({ conversation: "x" }), event: "connection.update" };
-    expect(parseInboundMessage(body)).toBeNull();
-  });
-
-  it("returns null for malformed payloads", () => {
-    expect(parseInboundMessage({ foo: "bar" })).toBeNull();
-    expect(parseInboundMessage(null)).toBeNull();
   });
 });
